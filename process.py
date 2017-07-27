@@ -10,7 +10,7 @@ State = namedtuple('State', 'state start_year list_of_months')
 Month = namedtuple('Month', 'year month list_of_days')
 Day = namedtuple('Day', 'day percentage')
 
-FIRST_SHEET = 'colorado_2016_2017.xlsx'
+FIRST_SHEET = 'concord_2016_2017.xlsx'
 
 def get_all_files():
 
@@ -32,9 +32,14 @@ def get_number_of_schools(sheet):
     SCHOOL_OFFSET = 6
     i = 0
 
-    while sheet[SCHOOL_OFFSET + i][0].value is not None:
-        i +=1
 
+    key_word_lowered = 'Percentage of Schools out'.lower()
+
+    cell_value = sheet[SCHOOL_OFFSET + i][0].value
+    while cell_value is not None and cell_value.strip().lower() != key_word_lowered:
+
+        i += 1
+        cell_value = sheet[SCHOOL_OFFSET + i][0].value
     return i
 
 def create_day_dict():
@@ -60,9 +65,11 @@ def update_day_dict(d, x):
         d['half'] += 1
     elif x == 'f':
         d['first_and_last'] += 1
+    elif not x.strip():
+        d['school'] += 1
     else:
+        print ('the val is ', x)
         raise Exception("What else am I missing?")
-
 
 def how_many_days_off_for_date(sheet, date_offset_var, how_many_schools):
 
@@ -108,7 +115,6 @@ def how_many_days_for_month(sheet, num_schools):
 
     return days
 
-
 def process_sheet(sheet):
 
     """
@@ -116,10 +122,10 @@ def process_sheet(sheet):
     """
 
     num_schools = get_number_of_schools(sheet)
+
     day_percentage = how_many_days_for_month(sheet,num_schools)
     month = sheet.title.split()[0]
     year = sheet.title.split()[1]
-
 
     days = [Day(idx + 1,value) for idx,value in enumerate(day_percentage)]
     month_final = Month(year, month, days)
@@ -147,7 +153,6 @@ def process_workbook(name):
     return State(state_name,start_year, months)
 
 
-
 def str_date_format(month_tuple):
 
     y = month_tuple.year
@@ -156,7 +161,6 @@ def str_date_format(month_tuple):
     s =  month + " {}, 20" + y
 
     return s
-
 
 def process_month(month_tuple):
 
