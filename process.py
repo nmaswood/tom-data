@@ -188,10 +188,10 @@ def processed_workbook_to_dataframe(pwb):
     return df
 
 def workbook_name_to_df(name):
-    results = process_workbook(FIRST_SHEET)
+    results = process_workbook(name)
     return processed_workbook_to_dataframe(results)
 
 if __name__ == '__main__':
 
     res = workbook_name_to_df(FIRST_SHEET)
-    print (res.head())
+    print (res)
