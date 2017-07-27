@@ -1,9 +1,32 @@
 import openpyxl as o
 import pandas as pd
+from glob import glob
+from calendar import monthrange, month_abbr
+from collections import namedtuple
+
+
+State = namedtuple('State', 'state list_of_months')
+Month = namedtuple('Month', 'month list_of_days')
+Day = namedtuple('Day', 'day percentage')
 
 FIRST_SHEET = 'colorado_2016_2017.xlsx'
 
+def get_all_files():
+
+    """
+    Returns a list of strings corresponding to all file names. You may have to tweak this.
+    """
+
+    return glob("*.xlsx")
+
+
 def get_number_of_schools(sheet):
+
+    """
+
+    Returns an integer corresponding the # of schools in a file
+
+    """
 
     SCHOOL_OFFSET = 6
     i = 0
@@ -14,51 +37,105 @@ def get_number_of_schools(sheet):
     return i
 
 def create_day_dict():
+
+    """
+    Creates an empty dictionary to be filled in later
+    """
     return {
         'no_school':  0,
         'first_and_last': 0,
         'half': 0,
-        'other': 0
+        'other': 0,
+        'school': 0
     }
 
-def how_many_days_off_for_date(sheet, date):
+def update_day_dict(d, x):
 
-    DATE_OFFSET = 0xdeadbeef
+    if x is None:
+        d['school'] += 1
+    elif x == 'x':
+        d['no_school'] += 1
+    elif  x == 'h':
+        d['half'] += 1
+    elif x == 'f':
+        d['first_and_last'] += 1
+    else:
+        raise Exception("What else am I missing?")
 
-    return 0 
+
+def how_many_days_off_for_date(sheet, date_offset_var, how_many_schools):
+
+    """
+
+    Fills in a create_day_dict dict
+
+    """
+
+    DATE_OFFSET_ROW = 4
+    BOXES_OFFSET_COL = 6
+    DATE_OFFSET_COL = 4
+
+    PERCENTAGE_OFFSET_ROW = 46
+
+    try:
+        date = sheet[DATE_OFFSET_ROW][DATE_OFFSET_COL + date_offset_var]
+    except IndexError:
+        return None
+
+    school_day_dict = create_day_dict()
+
+    for row_i in range(how_many_schools):
+        cell = sheet[BOXES_OFFSET_COL  + row_i][DATE_OFFSET_COL + date_offset_var]
+        update_day_dict(school_day_dict, cell.value)
+
+    return school_day_dict['no_school'] / how_many_schools
+    #return school_day_dict
+
+def how_many_days_for_month(sheet, num_schools):
+
+    days = []
+    for i in range(32):
+
+        val  = how_many_days_off_for_date(sheet, i, num_schools)
+
+        if val is None:
+            break
+        days.append(val)
+
+    return days
+
 
 def process_sheet(sheet):
 
-    DATE_ROW = 4
-    DATE_OFFSET = 4
-    
-    # first couple rows have no information so we slice them out
+    """
+    Gets the date/ % information for a single tab
+    """
 
-    dates_row = s[DATE_ROW][DATE_OFFSET:]
+    num_schools = get_number_of_schools(sheet)
+    day_percentage = how_many_days_for_month(sheet,num_schools)
+    month = sheet.title.split()[0]
 
-    return
+    days = [Day(idx,value) for idx,value in enumerate(day_percentage)]
+    month_final = Month(month, days)
+
+    return month_final
 
 def process_workbook(name):
 
-    wb = o.load_workbook(name, data_only = True)
-    relevant_sheets = [sheet for sheet in wb.worksheets if '_' not in sheet.title]
+    """
+    Gets the date/ % information for the entire workbook
+    """
 
-    s = relevant_sheets[0]
+    wb = o.load_workbook(name)
 
-    DATE_ROW = 4
-    DATE_OFFSET = 4
-    dates_row = s[DATE_ROW][DATE_OFFSET:]
+    relevant_sheets = [sheet for sheet in wb.worksheets if '_' not in sheet.title and not sheet.title.startswith("School")]
 
-    percentage_row = s[46][8]
-    #print( help(percentage_row))
-    SCHOOL_OFFSET = 0
-    fuck = s[6]
-    print(fuck[0].value)
+    state_name = name.split("_")[0].title()
 
-    foo = get_number_of_schools(s)
-    print (foo)
+    months = [process_sheet(sheet) for sheet in relevant_sheets]
 
+    return State(state_name, months)
 
-    return relevant_sheets
-
-process_workbook(FIRST_SHEET)
+if __name__ == '__main__':
+    results = process_workbook(FIRST_SHEET)
+    print (results)
